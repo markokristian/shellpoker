@@ -1,7 +1,7 @@
 import typer
 from rich.console import Console
 import toml
-from game import game_loop
+from shellpoker.game import game_loop
 
 console = Console()
 app = typer.Typer()
@@ -18,6 +18,8 @@ def greet():
     console.clear()
     game_loop()
 
+def main():
+    app()
 
 if __name__ == "__main__":
-    app()
+    main()

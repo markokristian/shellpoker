@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from card import Card
+from shellpoker.card import Card
 from collections import defaultdict
 
 @dataclass
@@ -26,7 +26,9 @@ class Wins:
         self.is_straight_flush = (self.is_flush and self.is_straight)
         self.is_four_of_a_kind = 4 in self.rank_counts.values()
         self.is_full_house = sorted(self.rank_counts.values()) == [2, 3]
+
         self.is_three_of_a_kind = 3 in self.rank_counts.values() and len(self.rank_counts) > 2
+
         self.is_two_pair = list(self.rank_counts.values()).count(2) == 2
         self.is_pair = 2 in self.rank_counts.values() and len(self.rank_counts) > 3
 
@@ -49,4 +51,4 @@ class Wins:
             return Win("Two Pairs", 2)
         # elif self.is_pair:
         #     return Win("One Pair", 1)
-        return Win(None, 1)
+        return Win(None, 0)

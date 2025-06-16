@@ -15,6 +15,6 @@ class Card:
 
     def render(self):
         return f"{self.rank.name}{self.suit.emoji}"
-    
+
     def __repr__(self):
         return f"{self.rank.name}{self.suit.emoji}"

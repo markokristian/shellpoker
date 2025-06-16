@@ -11,3 +11,14 @@ dependencies = [
 ]
 [project.scripts]
 shellpoker = "shellpoker.main:main"
+
+[tool.uv]
+package = true
+
+[dependency-groups]
+dev = [
+    "pytest>=8.4.0",
+]
+lint = [
+    "ruff>=0.11.13",
+]

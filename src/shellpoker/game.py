@@ -1,12 +1,12 @@
 
 from abc import ABC
 import sys
-from card import Card
-from deck import Deck
-from player import Player
+from shellpoker.card import Card
+from shellpoker.deck import Deck
+from shellpoker.player import Player
 from rich.console import Console
 
-from wins import Win
+from shellpoker.wins import Win, Wins
 
 class UserInput:
     def __init__(self, user_input: str):
@@ -20,7 +20,7 @@ class UserInput:
 
     def is_keep_hand(self):
         return self.user_input == 'k'
-    
+
     def is_increase_bet(self):
         return self.user_input == '+'
 
@@ -32,7 +32,7 @@ class UserInput:
             return self.user_input.split(',')
         else:
             return [self.user_input]
-        
+
     def get_card_indices(self) -> list[int]:
         # sorted so that we pick selected cards in order
         return sorted([int(i) for i in self.get_card_indices_strings()])
@@ -54,7 +54,7 @@ class UserInput:
 class Game:
     def __init__(self):
         self.state = "initial"
-        self.player = Player("Player 1")
+        self.player = Player("Player 1", money=5)
         self.deck = None
         self.bet = 1
         # track last win and the amount won given the bet at that point
@@ -74,12 +74,16 @@ class Game:
 
     def render_hand(self):
         return self.player.render_hand()
-    
+
     def render_status(self):
         if self.last_win is None:
-            return f"Money: {self.player.money} $ | Bet: {self.bet} $"
+            return (f"Money: {self.player.money} $"
+                    f"| Bet: {self.bet} $")
+
         _, amount_won = self.last_win
-        return f"Money: {self.player.money} $ | Bet: {self.bet} $ | Wins: {amount_won} $)"
+        return (f"Money: {self.player.money} $"
+                f"| Bet: {self.bet} $ "
+                f"| Wins: {amount_won} $")
 
     def deal_hand(self):
         self.player.subtract_bet(self.bet)
@@ -95,7 +99,7 @@ class Game:
     def are_valid_indices(self, indices):
         "Note that the UI uses 1-based indexing for cards."
         return all(0 <= i - 1 < len(self.player.hand) for i in indices)
-    
+
     def throw_hand(self):
         self.new_cards(keep=[])
 
@@ -114,13 +118,12 @@ class Game:
             self.player.add_card(card)
 
     def get_win(self):
-        from wins import Wins
         wins = Wins(self.player.hand)
         best_win = wins.get_best_win()
         # side effect: track the last win
         self.last_win = best_win, best_win.factor * self.bet
         return best_win.name, best_win.factor * self.bet
-    
+
     def reimburse(self):
         self.player.money += self.bet
 
@@ -188,11 +191,14 @@ class StateDoubleMiniGame(GameState):
                     ui.print("You guessed high, you lose your wins!")
                 break
             else:
-                ui.print("Invalid input. Type 'l' for low (1-7) or 'h' for high (8-13).")
+                ui.print(("Invalid input."
+                          "Type 'l' for low (1-7)"
+                          " or 'h' for high (8-13)."))
                 ui.print("Press any key to try again...")
                 ui.print("\n >> ", end="")
                 input()
 
+        game.collect_wins()  # collect the wins before exiting
         ui.print("Press any key to try again...")
         ui.print("\n >> ", end="")
         input()
@@ -216,6 +222,7 @@ class StateDoubleCheck(GameState):
         ui.print("\n >> ", end="")
         double_input = input().strip().lower()
         if not double_input.startswith("y"):
+            game.collect_wins() # collect the wins before exiting, since we are not doubling
             ui.clear()
             ui.print(game.render_status())
             ui.print()
@@ -226,7 +233,7 @@ class StateDoubleCheck(GameState):
             return StateDealing(game, ui)
         else:
             return StateDoubleMiniGame(game, self.money_won, ui)
-        
+
     def exit(self):
         pass
 
@@ -257,7 +264,7 @@ class StateWinCheck(GameState):
             ui.print("\n >> ", end="")
             input()
             return StateDoubleCheck(game, money_won, ui)
-        
+
     def exit(self):
         pass
 
@@ -285,19 +292,27 @@ class StateDealing(GameState):
     def enter(self):
         ui, game = self.ui, self.game
 
+        if game.player.money <= 0:
+            ui.clear()
+            ui.print("You have no money left to play.")
+            ui.print("Game over!")
+            ui.print("Press any key to exit...")
+            ui.print("\n >> ", end="")
+            input()
+            game.stop()
+
         if not game.player.can_afford(game.bet):
             ui.clear()
             ui.print(game.render_status())
             ui.print()
             ui.print(f"You cannot afford the current bet of {game.bet} $.")
-            ui.print("Decrease your bet or quit the game.")
+            ui.print("Decrease your bet.")
             ui.print("Press any key to continue...")
             ui.print("\n >> ", end="")
             input()
             return StateDealing(game, ui)
-    
+
         game.deal_hand()
-        game.collect_wins()
 
         while True:
             ui.clear()

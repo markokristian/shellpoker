@@ -1,4 +1,4 @@
-from card import Card
+from shellpoker.card import Card
 
 
 MAX_CARDS_IN_HAND = 5
@@ -7,7 +7,7 @@ class Player:
     def __init__(self, name: str, money: int = 20):
         self.name = name
         self.hand = list()
-        self.money = 20
+        self.money = money
 
     def clear_hand(self):
         self.hand.clear()
@@ -20,12 +20,11 @@ class Player:
 
     def n_missing_cards(self):
         return MAX_CARDS_IN_HAND - len(self.hand)
-    
+
     def subtract_bet(self, bet: int):
         assert bet >= 0, "Amount to subtract must be non-negative"
         assert self.money >= bet, "Not enough money to subtract"
         self.money -= bet
 
     def can_afford(self, bet: int) -> bool:
-        return self.money + bet >= bet
-    
+        return self.money + bet - 1 >= bet

@@ -1,4 +1,4 @@
-from card import Card, Rank, Suit
+from shellpoker.card import Card, Rank, Suit
 
 class Deck:
     def __init__(self):
