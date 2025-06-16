@@ -28,10 +28,7 @@ class UserInput:
         return self.user_input == '-'
 
     def get_card_indices_strings(self):
-        if ',' in self.user_input:
-            return self.user_input.split(',')
-        else:
-            return [self.user_input]
+        return [c for c in self.user_input if c.isdigit() and c in "12345"]
 
     def get_card_indices(self) -> list[int]:
         # sorted so that we pick selected cards in order
@@ -53,7 +50,6 @@ class UserInput:
 
 class Game:
     def __init__(self):
-        self.state = "initial"
         self.player = Player("Player 1", money=5)
         self.deck = None
         self.bet = 1
@@ -61,16 +57,11 @@ class Game:
         self.last_win: tuple[Win, int] = (None, 0)
 
     def start(self):
-        self.deck = Deck()  # reset the deck
-        self.state = "running"
+        self.deck = Deck()
         self.deck.shuffle()
 
     def stop(self):
-        self.state = "stopped"
         sys.exit(0)
-
-    def reset(self):
-        self.state = "initial"
 
     def render_hand(self):
         return self.player.render_hand()
@@ -286,7 +277,7 @@ class StateExited(GameState):
 class StateDealing(GameState):
     def __init__(self, game: Game, ui: Console):
         self.game: Game = game
-        game.start()
+        game.start() # deck is shuffled
         self.ui = ui
 
     def enter(self):
@@ -318,7 +309,7 @@ class StateDealing(GameState):
             ui.clear()
             ui.print(game.render_status())
             ui.print(f"Hand: {game.render_hand()}\n")
-            ui.print("'1,3' to keep cards 1 and 3")
+            ui.print("'13' to keep cards 1 and 3")
             ui.print("'t' to throw hand")
             ui.print("'k' to keep hand")
             ui.print("'+' to increase bet")
