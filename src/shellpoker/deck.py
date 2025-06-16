@@ -1,3 +1,5 @@
+import random
+
 from shellpoker.card import Card, Rank, Suit
 
 class Deck:
@@ -13,6 +15,5 @@ class Deck:
                  Suit("Clubs", "♣️"), Suit("Spades", "♠️")]
         return [Card(rank, suit) for rank in ranks for suit in suits]
 
-    def shuffle(self):
-        import random
+    def shuffle(self):        
         random.shuffle(self.cards)
