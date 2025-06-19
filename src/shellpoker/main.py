@@ -1,12 +1,13 @@
-import toml
 from shellpoker.game import main as poker_main
+from importlib.metadata import version, PackageNotFoundError
 
-def get_version():
-    pyproject = toml.load("pyproject.toml")
-    return pyproject["project"]["version"]
+try:
+    __version__ = version("shellpoker")
+except PackageNotFoundError:
+    __version__ = "dev"
 
 def main():
-    poker_main(get_version())
+    poker_main(__version__)
 
 if __name__ == "__main__":
     main()
