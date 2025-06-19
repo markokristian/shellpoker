@@ -1,8 +1,9 @@
 import logging
+import os
 
 def create_logger():
     logger = logging.getLogger("shellpoker")
-    logger.setLevel(logging.DEBUG)  # or DEBUG for more detail
+    logger.setLevel(os.environ.get("SHELLPOKER_LOGLEVEL", "INFO"))
     handler = logging.FileHandler("shellpoker.log", encoding="utf-8")
     formatter = logging.Formatter('%(asctime)s %(levelname)s:%(name)s:%(message)s')
     handler.setFormatter(formatter)

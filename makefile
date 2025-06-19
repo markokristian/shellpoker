@@ -1,6 +1,5 @@
-
 default:
-	uv run shellpoker
+	SHELLPOKER_LOGLEVEL=DEBUG uv run shellpoker
 
 test:
 	uv run pytest

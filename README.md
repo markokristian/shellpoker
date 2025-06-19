@@ -2,15 +2,14 @@
 
 ShellPoker is a command-line poker game written in python.
 
-## Development
+## Develop
 
 Use provided devcontainer.
 
-## Running the Game
+## Install and run
 
-```
-uv run main.py
-```
+    $ pip install [url] --user
+    $ shellpoker
 
 ## License
 
