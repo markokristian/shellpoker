@@ -1,17 +1,32 @@
-Screen {
+#container {
     layout: vertical;
-    align: center middle;
-    margin-top: 1;
-    padding-top: 1;
-    width: 30%;
-    background: black;
+    height: 100%;
+    padding: 0;
+    align: center top;
+}
+
+#header {
+    layout: grid;
+    grid-size: 2 1;
+    grid-columns: 1fr auto;
+    height: 3;
+    padding: 0 2;
+    background: $surface;
+    border-bottom: solid $accent;
+}
+
+#title,
+#version {
+    content-align: center middle;
+    text-style: bold;
 }
 
 #title {
-    content-align: center middle;
-    color: #FFD700;
-    text-style: bold;
-    margin-bottom: 1;
+    color: $text;
+}
+
+#version {
+    color: $text-muted;
 }
 
 #status {
@@ -23,11 +38,10 @@ Screen {
 
 #hand {
     content-align: center middle;
-    margin-bottom: 1;
     background: #006400;
     text-style: bold;
-    padding-top: 1;
-    padding-bottom: 1;
+    padding: 1 0;
+    margin-bottom: 1;
 }
 
 #message {
@@ -39,6 +53,6 @@ Screen {
 
 #action_input {
     border: solid #FFD700;
-    background: #252102;
     color: #FFD700;
+    background: $surface;
 }

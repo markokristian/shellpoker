@@ -109,9 +109,6 @@ class Game:
         self.last_win = best_win, best_win.factor * self.bet
         return best_win.name, best_win.factor * self.bet
 
-    def reimburse(self):
-        self.player.money += self.bet
-
     def collect_wins(self):
         _, amount_won = self.last_win
         self.player.money += amount_won
@@ -298,8 +295,9 @@ class StateDealing(GameState):
 
 
 class PokerApp(App):
-    def __init__(self):
+    def __init__(self, version: str):
         super().__init__()
+        self.version = version
         # TODO separate how much money the has vs how much they enter the game with
         # not interesting for now, but could be useful for future features
         self.game = Game(Player("Player 1", 0))
@@ -311,11 +309,16 @@ class PokerApp(App):
     
     def compose(self) -> ComposeResult:
         yield Container(
-            Static("SHELL POKER", id="title"),
+            Container(
+                Static(f"SHELL POKER", id="title"),
+                Static(f"v{self.version}", id="version"),
+                id="header"
+            ),
             Static(self.game.render_status(), id="status"),
             Static(self.game.render_hand(), id="hand"),
             Static(self.state.message, id="message"),
             Input(placeholder="", id="action_input", max_length=5),
+            id="container",
         )
 
     def update_ui(self):
@@ -340,8 +343,8 @@ class PokerApp(App):
         self.update_ui()
 
 
-def main():
-    app = PokerApp()
+def main(version: str):
+    app = PokerApp(version)
     app.run()
 
 if __name__ == "__main__":

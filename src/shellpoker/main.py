@@ -6,7 +6,7 @@ def get_version():
     return pyproject["project"]["version"]
 
 def main():
-    poker_main()
+    poker_main(get_version())
 
 if __name__ == "__main__":
     main()

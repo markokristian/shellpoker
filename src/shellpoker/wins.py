@@ -21,6 +21,8 @@ class Wins:
         self.is_flush = len(self.suits) == 1
         self.is_straight = (len(self.ranks) == 5 and
                            self.ranks == list(range(self.ranks[0], self.ranks[0] + 5)))
+        if self.ranks == [2, 3, 4, 5, 14]:  # low ace straight
+            self.is_straight = True
         self.is_royal_flush = (self.is_flush and
                              self.ranks == [10, 11, 12, 13, 14])
         self.is_straight_flush = (self.is_flush and self.is_straight)
