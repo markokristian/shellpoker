@@ -4,9 +4,9 @@ from shellpoker.card import Card
 MAX_CARDS_IN_HAND = 5
 
 class Player:
-    def __init__(self, name: str, money: int = 20):
+    def __init__(self, name: str, money: int = 0):
         self.name = name
-        self.hand = list()
+        self.hand = list[Card]()
         self.money = money
 
     def clear_hand(self):
@@ -15,7 +15,9 @@ class Player:
     def add_card(self, card: 'Card'):
         self.hand.append(card)
 
-    def render_hand(self):
+    def render_hand(self, obfuscate: bool = False) -> str:
+        if obfuscate:
+            return '  '.join(card.obfuscated_render() for card in self.hand)
         return '  '.join(card.render() for card in self.hand)
 
     def n_missing_cards(self):
@@ -26,5 +28,3 @@ class Player:
         assert self.money >= bet, "Not enough money to subtract"
         self.money -= bet
 
-    def can_afford(self, bet: int) -> bool:
-        return self.money + bet - 1 >= bet

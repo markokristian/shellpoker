@@ -5,8 +5,7 @@ description = "single player poker in your shell"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
-    "rich",
-    "typer",
+    "textual",
     "toml"
 ]
 [project.scripts]

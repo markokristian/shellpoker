@@ -49,6 +49,6 @@ class Wins:
             return Win("Three of a Kind", 4)
         elif self.is_two_pair:
             return Win("Two Pairs", 2)
-        # elif self.is_pair:
-        #     return Win("One Pair", 1)
+        elif self.is_pair:
+            return Win("One Pair", 1)
         return Win(None, 0)

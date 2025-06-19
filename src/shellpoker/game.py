@@ -1,62 +1,58 @@
-
 from abc import ABC
 import sys
 from shellpoker.card import Card
 from shellpoker.deck import Deck
+from shellpoker.inputs import (
+    BetHighEvent,
+    BetLowEvent,
+    ConfirmEvent,
+    DecreaseBetEvent,
+    GameEvent,
+    IncreaseBetEvent,
+    KeepHandEvent,
+    QuitEvent,
+    SelectCardsEvent,
+    ThrowHandEvent,
+    parse_input,
+)
+from shellpoker.logger import create_logger
 from shellpoker.player import Player
-from rich.console import Console
+
+from textual.app import App, ComposeResult
+from textual.widgets import Static, Input
+from textual.containers import Container
+from textual.reactive import reactive
 
 from shellpoker.wins import Win, Wins
 
-class UserInput:
-    def __init__(self, user_input: str):
-        self.user_input = user_input.strip().replace(" ", "").lower()
+log = create_logger()
 
-    def is_quit(self):
-        return self.user_input == 'q'
+instructions = "\n".join([
+    "t to throw your hand",
+    "k to keep your hand",
+    "+ to increase your bet",
+    "- to decrease your bet",
+    "13 to select cards 1 and 3"
+])
 
-    def is_throw_hand(self):
-        return self.user_input == 't'
-
-    def is_keep_hand(self):
-        return self.user_input == 'k'
-
-    def is_increase_bet(self):
-        return self.user_input == '+'
-
-    def is_decrease_bet(self):
-        return self.user_input == '-'
-
-    def get_card_indices_strings(self):
-        return [c for c in self.user_input if c.isdigit() and c in "12345"]
-
-    def get_card_indices(self) -> list[int]:
-        # sorted so that we pick selected cards in order
-        return sorted([int(i) for i in self.get_card_indices_strings()])
-
-    def is_valid_input(self):
-        if (
-            self.is_keep_hand()
-            or self.is_throw_hand()
-            or self.is_increase_bet()
-            or self.is_decrease_bet()
-            or self.is_quit()
-        ):
-            return True
-
-        return all(
-            s.isdigit() and int(s) > 0 for s in self.get_card_indices_strings()
-        )
+class Config:
+    MAX_BET = 5
+    INITIAL_MONEY = 20
 
 class Game:
-    def __init__(self):
-        self.player = Player("Player 1", money=5)
+    def __init__(self, player: Player):
+        self.player = player
+        self.obfuscate_hand = False  # whether to show the hand or not
+
+    def start_new_game(self):
+        log.info("Starting a new game.")
         self.deck = None
         self.bet = 1
+        self.player.money = Config.INITIAL_MONEY
         # track last win and the amount won given the bet at that point
         self.last_win: tuple[Win, int] = (None, 0)
 
-    def start(self):
+    def shuffle_deck(self):
         self.deck = Deck()
         self.deck.shuffle()
 
@@ -64,7 +60,7 @@ class Game:
         sys.exit(0)
 
     def render_hand(self):
-        return self.player.render_hand()
+        return self.player.render_hand(obfuscate=self.obfuscate_hand)
 
     def render_status(self):
         if self.last_win is None:
@@ -77,7 +73,6 @@ class Game:
                 f"| Wins: {amount_won} $")
 
     def deal_hand(self):
-        self.player.subtract_bet(self.bet)
         self.player.clear_hand()
         self.fill_hand()
 
@@ -87,8 +82,7 @@ class Game:
         self.player.add_card(card)
         return card
 
-    def are_valid_indices(self, indices):
-        "Note that the UI uses 1-based indexing for cards."
+    def are_valid_indices(self, indices: list[int]) -> bool:
         return all(0 <= i - 1 < len(self.player.hand) for i in indices)
 
     def throw_hand(self):
@@ -123,10 +117,13 @@ class Game:
         self.player.money += amount_won
         self.last_win = (None, 0)  # reset last win after collecting
 
+    def can_afford_bet_increase_of(self, bet_increase: int) -> bool:
+        return self.player.money >= bet_increase
+
     def increase_bet(self, amount: int):
         assert amount > 0
         self.bet += amount
-        self.player.subtract_bet(amount)
+        self.player.money -= amount
 
     def decrease_bet(self, amount: int):
         assert amount > 0
@@ -135,243 +132,217 @@ class Game:
 
 
 class GameState(ABC):
-    pass
+    def __init__(self, game: Game):
+        self.game = game
+
+    def on_event(self, event: GameEvent):
+        log.debug("Got an event in GameState %s: %s", self, event)
+        match event:
+            case QuitEvent():
+                return StateExited(self.game)
+            case _:
+                log.debug("No transition for unknown event: %s", event)
+                return self
 
 class StateDoubleMiniGame(GameState):
-    def __init__(self, game: Game, money_won: int, ui: Console = Console()):
-        self.ui = ui
+    def __init__(self, game: Game, money_won: int):
         self.game = game
         self.money_won = money_won
+        self.message = "Low or High?\n1-7 are low, 8-K are high\n(l/h)"
+        self.card_dealt: Card = game.deal_one_card()
+        game.obfuscate_hand = True  # Hide the hand in this state
 
-    def enter(self):
-        ui, game = self.ui, self.game
-        money_won = self.money_won
-        money_won *= 2
-        card_dealt: Card = game.deal_one_card()
+    def on_event(self, event):
+        game = self.game
+        prize = self.money_won * 2
+        card_dealt: Card = self.card_dealt
 
-        while True:
-            ui.clear()
-            ui.print(game.render_status())
-            ui.print()
-            ui.print("Low or High? (l/h)")
-            ui.print("\n >> ", end="")
+        if isinstance(event, (BetLowEvent, BetHighEvent)):
+            game.obfuscate_hand = False  # Show the hand again when betting
 
-            lh_input = input().strip().lower()
-            if lh_input == 'l':
-                ui.clear()
-                ui.print(game.render_status())
-                ui.print(f"{game.player.render_hand()}")
+        match event:
+            case BetLowEvent():
                 if card_dealt.rank.value < 8:
-                    game.player.money += money_won
-                    game.last_win = (Win("Double Win", 0), money_won)
-                    ui.print(f"You guessed low, you win {money_won} $!")
+                    game.last_win = (Win("Double Win", 0), prize)
+                    return StateDoubleCheck(game, f"a Correct Low Guess", prize)
                 else:
-                    game.last_win = (None, 0) # needs reset sigh
-                    ui.print("You guessed low, you lose your wins!")
-                break
-            elif lh_input == 'h':
-                ui.clear()
-                ui.print(game.render_status())
-                ui.print(f"{game.player.render_hand()}")
+                    game.last_win = (None, 0)
+                    return LostDoubleMiniGame(game)
+            case BetHighEvent():
                 if card_dealt.rank.value >= 8:
-                    game.player.money += money_won
-                    game.last_win = (Win("Double Win", 0), money_won)
-                    ui.print(f"You guessed high, you win {money_won} $!")
+                    game.last_win = (Win("Double Win", 0), prize)
+                    return StateDoubleCheck(game, f"a Correct High Guess", prize)
                 else:
-                    game.last_win = (None, 0) # needs reset sigh
-                    ui.print("You guessed high, you lose your wins!")
-                break
-            else:
-                ui.print(("Invalid input."
-                          "Type 'l' for low (1-7)"
-                          " or 'h' for high (8-13)."))
-                ui.print("Press any key to try again...")
-                ui.print("\n >> ", end="")
-                input()
-
-        game.collect_wins()  # collect the wins before exiting
-        ui.print("Press any key to try again...")
-        ui.print("\n >> ", end="")
-        input()
-        return StateDealing(game, ui)
-
-    def exit(self):
-        pass
+                    return LostDoubleMiniGame(game)
+            case _:
+                return super().on_event(event)
 
 class StateDoubleCheck(GameState):
-    def __init__(self, game: Game, money_won: int, ui: Console):
-        self.ui = ui
+    def __init__(self, game: Game, win_name: str, money_won: int):
         self.game = game
         self.money_won = money_won
+        self.win_name = win_name
+        self.message = f"{self.win_name}! You won {self.money_won} $!\nDo you want to double your winnings?\n(y/n)?"
+       
+    def on_event(self, event: GameEvent):
+        game = self.game
+        match event:
+            case ConfirmEvent():
+                return StateDoubleMiniGame(game, self.money_won)
+            case _:
+                game.collect_wins()
+                return StateDealing(game)
 
-    def enter(self):
-        ui, game = self.ui, self.game
-        ui.clear()
-        ui.print(game.render_status())
-        ui.print()
-        ui.print("Do you want to double? (y/n)")
-        ui.print("\n >> ", end="")
-        double_input = input().strip().lower()
-        if not double_input.startswith("y"):
-            game.collect_wins() # collect the wins before exiting, since we are not doubling
-            ui.clear()
-            ui.print(game.render_status())
-            ui.print()
-            ui.print("You chose not to double.")
-            ui.print("Press any key to continue...")
-            ui.print("\n >> ", end="")
-            input()
-            return StateDealing(game, ui)
-        else:
-            return StateDoubleMiniGame(game, self.money_won, ui)
-
-    def exit(self):
-        pass
-
-class StateWinCheck(GameState):
-    def __init__(self, game: Game, ui: Console):
-        self.ui = ui
+class LostDoubleMiniGame(GameState):
+    def __init__(self, game: Game):
         self.game = game
+        game.last_win = (None, 0)
+        self.previous_bet = game.bet
+        self.game.bet = 0 # lost the bet
+        self.message = "You guessed wrong :( Press any key to continue..."
+        self.game.obfuscate_hand = False  # Show the hand in this state
 
-    def enter(self):
-        ui, game = self.ui, self.game
-        win_name, money_won = game.get_win()
-        ui.clear()
+    def on_event(self, event: GameEvent):
+        super().on_event(event)  # TODO decorator
+        if self.game.player.money <= 0:
+            return StateGameOver(self.game)
+        self.game.bet = min(self.previous_bet, self.game.player.money)
+        return StateDealing(self.game)
 
-        if win_name is None:
-            ui.print(game.render_status())
-            ui.print(f"Hand: {game.render_hand()}")
-            ui.print()
-            ui.print("No win this time. Better luck next time!")
-            ui.print("Press any key to continue...")
-            ui.print("\n >> ", end="")
-            input()
-            return StateDealing(game, ui)
-        else:
-            ui.print(game.render_status())
-            ui.print(f"Hand: {game.render_hand()}\n")
-            ui.print(f"Got [bold magenta]{win_name}[/bold magenta], won {money_won} $!")
-            ui.print("Press any key to continue...")
-            ui.print("\n >> ", end="")
-            input()
-            return StateDoubleCheck(game, money_won, ui)
+class NoWinState(GameState):
+    def __init__(self, game: Game):
+        self.game = game
+        self.previous_bet = game.bet
+        self.game.bet = 0 # lost the bet
+        self.message = "No win this time. Press any key to continue..."
 
-    def exit(self):
-        pass
+    def on_event(self, event: GameEvent):
+        super().on_event(event)  # TODO decorator
+        if self.game.player.money <= 0:
+            return StateGameOver(self.game)
+        self.game.bet = min(self.previous_bet, self.game.player.money)
+        return StateDealing(self.game)
+
+class StateGameOver(GameState):
+    def __init__(self, game: Game):
+        self.game = game
+        self.message = "Game over! You have no money left to play. \nPress q to quit or any other key to play again."
+
+    def on_event(self, event: GameEvent):
+        game = self.game
+        match event:
+            case QuitEvent():
+                return StateExited(game)
+            case _:
+                game.start_new_game()
+                return StateDealing(game)
 
 class StateExited(GameState):
-    def __init__(self, game: Game, ui: Console):
+    def __init__(self, game: Game):
         self.game = game
-        self.ui = ui
-
-    def enter(self):
-        ui, game = self.ui, self.game
-        ui.clear()
-        ui.print(f"You left with {game.player.money} $")
-        ui.print("Thanks for playing!")
+        self.message = f"Thanks for playing! You left with {game.player.money} $"
+        print(self.message)
         game.stop()
 
-    def exit(self):
-        pass
-
 class StateDealing(GameState):
-    def __init__(self, game: Game, ui: Console):
-        self.game: Game = game
-        game.start() # deck is shuffled
-        self.ui = ui
-
-    def enter(self):
-        ui, game = self.ui, self.game
-
-        if game.player.money <= 0:
-            ui.clear()
-            ui.print("You have no money left to play.")
-            ui.print("Game over!")
-            ui.print("Press any key to exit...")
-            ui.print("\n >> ", end="")
-            input()
-            game.stop()
-
-        if not game.player.can_afford(game.bet):
-            ui.clear()
-            ui.print(game.render_status())
-            ui.print()
-            ui.print(f"You cannot afford the current bet of {game.bet} $.")
-            ui.print("Decrease your bet.")
-            ui.print("Press any key to continue...")
-            ui.print("\n >> ", end="")
-            input()
-            return StateDealing(game, ui)
-
+    def __init__(self, game: Game):
+        super().__init__(game)
+        game.shuffle_deck()
+        game.player.subtract_bet(game.bet)
         game.deal_hand()
+        self.message = instructions
+ 
+    def on_event(self, event: GameEvent):
+        super().on_event(event) # TODO decorator
+        game = self.game
 
-        while True:
-            ui.clear()
-            ui.print(game.render_status())
-            ui.print(f"Hand: {game.render_hand()}\n")
-            ui.print("'13' to keep cards 1 and 3")
-            ui.print("'t' to throw hand")
-            ui.print("'k' to keep hand")
-            ui.print("'+' to increase bet")
-            ui.print("'-' to decrease bet")
-            ui.print("'q' to quit")
-            ui.print("\n >> ", end="")
+        if game.player.money <= 0 and game.bet == 0:
+            return StateGameOver(game)
 
-            user_input = UserInput(input())
-            if not user_input.is_valid_input():
-                ui.clear()
-                ui.print(game.render_status())
-                ui.print(f"Hand: {game.render_hand()}\n")
-                ui.print("Invalid input. Please try again.")
-                ui.print("Press any key to continue...")
-                ui.print("\n >> ", end="")
-                input()
-                continue
-
-            if user_input.is_quit():
-                return StateExited(self.game, self.ui)
-            elif user_input.is_increase_bet():
-                if game.player.can_afford(game.bet + 1):
+        match event:
+            case ThrowHandEvent():
+                log.info("Player chose to throw the hand.")
+                game.throw_hand()
+                game.deal_hand()
+                return self.check_win()
+            case KeepHandEvent():
+                log.info("Player chose to keep the hand.")
+                return self.check_win()
+            case IncreaseBetEvent():
+                log.info(f"Player wants to increase the bet from {game.bet} to {game.bet + 1}.")
+                if game.can_afford_bet_increase_of(bet_increase=1) and game.bet + 1 <= Config.MAX_BET:
                     game.increase_bet(1)
-                else:
-                    ui.print("You cannot afford to increase your bet.")
-                    ui.print("Press any key to continue...")
-                    ui.print("\n >> ", end="")
-                    input()
-                continue
-            elif user_input.is_decrease_bet():
+                return self
+            case DecreaseBetEvent():
+                log.info("Player chose to decrease the bet.")
                 if game.bet > 1:
                     game.decrease_bet(1)
-                else:
-                    ui.print("You cannot decrease your bet below 1 $.")
-                    ui.print("Press any key to continue...")
-                    ui.print("\n >> ", end="")
-                    input()
-                continue
-            elif user_input.is_throw_hand():
-                self.game.throw_hand()
-                return StateWinCheck(self.game, self.ui)
-            elif user_input.is_keep_hand():
-                pass
-                return StateWinCheck(self.game, self.ui)
-            elif user_input.get_card_indices():
-                indices = user_input.get_card_indices()
-                if self.game.are_valid_indices(indices):
-                    self.game.keep_selected_cards(indices)
-                return StateWinCheck(self.game, self.ui)
+                return self
+            case SelectCardsEvent():
+                indices = event.indices
+                log.info(f"Player chose to select cards: {indices}")
+                if game.are_valid_indices(indices):
+                    game.keep_selected_cards(indices)
+                    return self.check_win()
+            case _:
+                return super().on_event(event)
 
-    def exit(self):
-        pass
+        
+    def check_win(self):
+        game = self.game
+        win_name, money_won = game.get_win()
+        if win_name is None:
+            return NoWinState(game)
+        else:
+            return StateDoubleCheck(game, win_name, money_won)
 
-def game_loop():
-    ui = Console()
-    game = Game()
-    state: GameState = StateDealing(game, ui)
-    while True:
-        next_state = state.enter()
-        state.exit()
-        state = next_state
 
+class PokerApp(App):
+    def __init__(self):
+        super().__init__()
+        # TODO separate how much money the has vs how much they enter the game with
+        # not interesting for now, but could be useful for future features
+        self.game = Game(Player("Player 1", 0))
+        self.game.start_new_game()
+        self.state = StateDealing(self.game)
+        
+    CSS_PATH = "poker.css"
+    user_input = reactive("")
+    
+    def compose(self) -> ComposeResult:
+        yield Container(
+            Static("SHELL POKER", id="title"),
+            Static(self.game.render_status(), id="status"),
+            Static(self.game.render_hand(), id="hand"),
+            Static(self.state.message, id="message"),
+            Input(placeholder="", id="action_input", max_length=5),
+        )
+
+    def update_ui(self):
+        hand = self.game.render_hand()
+        status = self.game.render_status()
+        message = self.state.message
+
+        self.query_one("#status", Static).update(status)
+        self.query_one("#hand", Static).update(hand)
+        self.query_one("#message", Static).update(message)
+
+    def on_input_submitted(self, event: Input.Submitted) -> None:
+        event = parse_input(event.value)
+
+        log.debug("Parsed event: %s", event)
+        log.debug("Current state: %s", self.state)
+        self.state = self.state.on_event(event)
+        self.game = self.state.game
+        log.debug("New state: %s", self.state)
+
+        self.query_one("#action_input", Input).value = ""
+        self.update_ui()
+
+
+def main():
+    app = PokerApp()
+    app.run()
 
 if __name__ == "__main__":
-    game_loop()
+    main()

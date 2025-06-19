@@ -1,0 +1,44 @@
+Screen {
+    layout: vertical;
+    align: center middle;
+    margin-top: 1;
+    padding-top: 1;
+    width: 30%;
+    background: black;
+}
+
+#title {
+    content-align: center middle;
+    color: #FFD700;
+    text-style: bold;
+    margin-bottom: 1;
+}
+
+#status {
+    content-align: center middle;
+    color: #FFD700;
+    text-style: bold;
+    margin-bottom: 1;
+}
+
+#hand {
+    content-align: center middle;
+    margin-bottom: 1;
+    background: #006400;
+    text-style: bold;
+    padding-top: 1;
+    padding-bottom: 1;
+}
+
+#message {
+    content-align: center middle;
+    color: #ad3939;
+    margin-bottom: 1;
+    height: 5;
+}
+
+#action_input {
+    border: solid #FFD700;
+    background: #252102;
+    color: #FFD700;
+}
