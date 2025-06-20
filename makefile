@@ -1,5 +1,5 @@
 default:
-	SHELLPOKER_LOGLEVEL=DEBUG uv run shellpoker
+	SHELLPOKER_LOGLEVEL=DEBUG SHELLPOKER_LOG_TO_FILE="true" uv run shellpoker
 
 test:
 	uv run pytest
