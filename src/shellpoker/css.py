@@ -3,8 +3,6 @@ def css():
     #container {
         layout: vertical;
         height: 100%;
-        padding: 0;
-        align: center top;
     }
 
     #header {
@@ -19,7 +17,6 @@ def css():
 
     #title,
     #version {
-        content-align: center middle;
         text-style: bold;
     }
 
@@ -32,25 +29,56 @@ def css():
     }
 
     #status {
-        content-align: center middle;
         color: #FFD700;
         text-style: bold;
         margin-bottom: 1;
+        padding: 0 2;
     }
 
     #hand {
-        content-align: center middle;
-        background: #006400;
+        layout: horizontal;
+        width: 100%;
+        height: 7;
+    }
+    .card {
+        layout: vertical;
+        width: 10;
+        height: 5;
+        margin: 0 1;
+    }
+    .card-line {
+        height: 1;
+        width: 9;
         text-style: bold;
-        padding: 1 0;
-        margin-bottom: 1;
+        color: white;
+        background: white;
+    }
+    .card-line.hearts {
+        color: red;
+    }
+    .card-line.diamonds {
+        color: red;
+    }
+    .card-line.clubs {
+        color: black;
+    }
+    .card-line.spades {
+        color: black;
+    }
+    .card-line.obfuscated {
+        color: #ad3939;
+        background: red;
+    }
+    .card-line.obfuscated.mid {
+        color: #ad3939;
+        background: red;
     }
 
     #message {
-        content-align: center middle;
         color: #ad3939;
         margin-bottom: 1;
         height: 5;
+        padding: 0 2;
     }
 
     #action_input {

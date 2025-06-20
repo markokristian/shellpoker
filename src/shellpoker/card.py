@@ -13,11 +13,5 @@ class Card:
         self.rank = rank
         self.suit = suit
 
-    def render(self) -> str:
-        return f"{self.rank.name}{self.suit.emoji}"
-
-    def obfuscated_render(self) -> str:
-        return f"??{self.suit.emoji}"
-
     def __repr__(self) -> str:
         return f"{self.rank.name}{self.suit.emoji}"

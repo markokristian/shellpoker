@@ -296,8 +296,8 @@ class StateDealing(GameState):
 
 
 class PokerApp(App):
-
     CSS = css()
+    user_input = reactive("")
 
     def __init__(self, version: str):
         super().__init__()
@@ -307,10 +307,10 @@ class PokerApp(App):
         self.game = Game(Player("Player 1", 0))
         self.game.start_new_game()
         self.state = StateDealing(self.game)
-
-    user_input = reactive("")
+        self.hand_container: Container | None = None
     
     def compose(self) -> ComposeResult:
+        self.hand_container = Container(id="hand")
         yield Container(
             Container(
                 Static("SHELL POKER", id="title"),
@@ -318,30 +318,30 @@ class PokerApp(App):
                 id="header"
             ),
             Static(self.game.render_status(), id="status"),
-            Static(self.game.render_hand(), id="hand"),
+            self.hand_container,
             Static(self.state.message, id="message"),
             Input(placeholder="Enter to submit", id="action_input", max_length=5),
             id="container",
         )
 
+    def on_mount(self):
+        self.update_ui()
+
     def update_ui(self):
-        hand = self.game.render_hand()
         status = self.game.render_status()
         message = self.state.message
-
         self.query_one("#status", Static).update(status)
-        self.query_one("#hand", Static).update(hand)
+        self.hand_container.remove_children()
+        self.hand_container.mount(*self.game.render_hand())
         self.query_one("#message", Static).update(message)
 
     def on_input_submitted(self, event: Input.Submitted) -> None:
         event = parse_input(event.value)
-
         log.debug("Parsed event: %s", event)
         log.debug("Current state: %s", self.state)
         self.state = self.state.on_event(event)
         self.game = self.state.game
         log.debug("New state: %s", self.state)
-
         self.query_one("#action_input", Input).value = ""
         self.update_ui()
 

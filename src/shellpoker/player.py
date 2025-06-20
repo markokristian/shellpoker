@@ -1,5 +1,5 @@
 from shellpoker.card import Card
-
+from shellpoker.card_widget import CardWidget, ObfuscatedCardWidget
 
 MAX_CARDS_IN_HAND = 5
 
@@ -14,11 +14,12 @@ class Player:
 
     def add_card(self, card: 'Card'):
         self.hand.append(card)
-
-    def render_hand(self, obfuscate: bool = False) -> str:
-        if obfuscate:
-            return '  '.join(card.obfuscated_render() for card in self.hand)
-        return '  '.join(card.render() for card in self.hand)
+    
+    def render_card(self, card: Card, obfuscate: bool) -> CardWidget | ObfuscatedCardWidget:
+        return CardWidget(card) if not obfuscate else ObfuscatedCardWidget(card)
+    
+    def render_hand(self, obfuscate: bool = False):
+        return [self.render_card(card, obfuscate) for card in self.hand]
 
     def n_missing_cards(self):
         return MAX_CARDS_IN_HAND - len(self.hand)
