@@ -1,10 +1,12 @@
 from abc import ABC
 import sys
+from shellpoker.css import css
 from shellpoker.card import Card
 from shellpoker.deck import Deck
 from shellpoker.inputs import (
     BetHighEvent,
     BetLowEvent,
+    CancelEvent,
     ConfirmEvent,
     DecreaseBetEvent,
     GameEvent,
@@ -32,7 +34,7 @@ instructions = "\n".join([
     "k to keep your hand",
     "+ to increase your bet",
     "- to decrease your bet",
-    "13 to select cards 1 and 3"
+    "124 to keep cards 1, 2 and 4"
 ])
 
 class Config:
@@ -129,9 +131,6 @@ class Game:
 
 
 class GameState(ABC):
-    def __init__(self, game: Game):
-        self.game = game
-
     def on_event(self, event: GameEvent):
         log.debug("Got an event in GameState %s: %s", self, event)
         match event:
@@ -161,14 +160,14 @@ class StateDoubleMiniGame(GameState):
             case BetLowEvent():
                 if card_dealt.rank.value < 8:
                     game.last_win = (Win("Double Win", 0), prize)
-                    return StateDoubleCheck(game, f"a Correct Low Guess", prize)
+                    return StateDoubleCheck(game, "Correct Low Guess", prize)
                 else:
                     game.last_win = (None, 0)
                     return LostDoubleMiniGame(game)
             case BetHighEvent():
                 if card_dealt.rank.value >= 8:
                     game.last_win = (Win("Double Win", 0), prize)
-                    return StateDoubleCheck(game, f"a Correct High Guess", prize)
+                    return StateDoubleCheck(game, "Correct High Guess", prize)
                 else:
                     return LostDoubleMiniGame(game)
             case _:
@@ -186,9 +185,11 @@ class StateDoubleCheck(GameState):
         match event:
             case ConfirmEvent():
                 return StateDoubleMiniGame(game, self.money_won)
-            case _:
+            case CancelEvent():
                 game.collect_wins()
                 return StateDealing(game)
+            case _:
+                return super().on_event(event)
 
 class LostDoubleMiniGame(GameState):
     def __init__(self, game: Game):
@@ -196,7 +197,7 @@ class LostDoubleMiniGame(GameState):
         game.last_win = (None, 0)
         self.previous_bet = game.bet
         self.game.bet = 0 # lost the bet
-        self.message = "You guessed wrong :( Press any key to continue..."
+        self.message = "You guessed wrong :( Press Enter to continue..."
         self.game.obfuscate_hand = False  # Show the hand in this state
 
     def on_event(self, event: GameEvent):
@@ -211,7 +212,7 @@ class NoWinState(GameState):
         self.game = game
         self.previous_bet = game.bet
         self.game.bet = 0 # lost the bet
-        self.message = "No win this time. Press any key to continue..."
+        self.message = "No win this time. Press Enter to continue..."
 
     def on_event(self, event: GameEvent):
         super().on_event(event)  # TODO decorator
@@ -223,7 +224,7 @@ class NoWinState(GameState):
 class StateGameOver(GameState):
     def __init__(self, game: Game):
         self.game = game
-        self.message = "Game over! You have no money left to play. \nPress q to quit or any other key to play again."
+        self.message = "Game over! You have no money left to play. \nPress q to quit or Enter to play again."
 
     def on_event(self, event: GameEvent):
         game = self.game
@@ -236,14 +237,14 @@ class StateGameOver(GameState):
 
 class StateExited(GameState):
     def __init__(self, game: Game):
-        self.game = game
         self.message = f"Thanks for playing! You left with {game.player.money} $"
         print(self.message)
         game.stop()
 
 class StateDealing(GameState):
     def __init__(self, game: Game):
-        super().__init__(game)
+        super().__init__()
+        self.game = game
         game.shuffle_deck()
         game.player.subtract_bet(game.bet)
         game.deal_hand()
@@ -296,66 +297,7 @@ class StateDealing(GameState):
 
 class PokerApp(App):
 
-    CSS = """
-    #container {
-        layout: vertical;
-        height: 100%;
-        padding: 0;
-        align: center top;
-    }
-
-    #header {
-        layout: grid;
-        grid-size: 2 1;
-        grid-columns: 1fr auto;
-        height: 3;
-        padding: 0 2;
-        background: $surface;
-        border-bottom: solid $accent;
-    }
-
-    #title,
-    #version {
-        content-align: center middle;
-        text-style: bold;
-    }
-
-    #title {
-        color: $text;
-    }
-
-    #version {
-        color: $text-muted;
-    }
-
-    #status {
-        content-align: center middle;
-        color: #FFD700;
-        text-style: bold;
-        margin-bottom: 1;
-    }
-
-    #hand {
-        content-align: center middle;
-        background: #006400;
-        text-style: bold;
-        padding: 1 0;
-        margin-bottom: 1;
-    }
-
-    #message {
-        content-align: center middle;
-        color: #ad3939;
-        margin-bottom: 1;
-        height: 5;
-    }
-
-    #action_input {
-        border: solid #FFD700;
-        color: #FFD700;
-        background: $surface;
-    }
-    """
+    CSS = css()
 
     def __init__(self, version: str):
         super().__init__()
@@ -371,14 +313,14 @@ class PokerApp(App):
     def compose(self) -> ComposeResult:
         yield Container(
             Container(
-                Static(f"SHELL POKER", id="title"),
+                Static("SHELL POKER", id="title"),
                 Static(f"v{self.version}", id="version"),
                 id="header"
             ),
             Static(self.game.render_status(), id="status"),
             Static(self.game.render_hand(), id="hand"),
             Static(self.state.message, id="message"),
-            Input(placeholder="", id="action_input", max_length=5),
+            Input(placeholder="Enter to submit", id="action_input", max_length=5),
             id="container",
         )
 
