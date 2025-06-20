@@ -7,6 +7,7 @@ from shellpoker.inputs import (
     BetHighEvent,
     BetLowEvent,
     CancelEvent,
+    ConfirmBetEvent,
     ConfirmEvent,
     DecreaseBetEvent,
     GameEvent,
@@ -28,14 +29,6 @@ from textual.reactive import reactive
 from shellpoker.wins import Win, Wins
 
 log = create_logger()
-
-instructions = "\n".join([
-    "t to throw your hand",
-    "k to keep your hand",
-    "+ to increase your bet",
-    "- to decrease your bet",
-    "124 to keep cards 1, 2 and 4"
-])
 
 class Config:
     MAX_BET = 5
@@ -187,7 +180,7 @@ class StateDoubleCheck(GameState):
                 return StateDoubleMiniGame(game, self.money_won)
             case CancelEvent():
                 game.collect_wins()
-                return StateDealing(game)
+                return StatePlaceBet(game)
             case _:
                 return super().on_event(event)
 
@@ -205,7 +198,7 @@ class LostDoubleMiniGame(GameState):
         if self.game.player.money <= 0:
             return StateGameOver(self.game)
         self.game.bet = min(self.previous_bet, self.game.player.money)
-        return StateDealing(self.game)
+        return StatePlaceBet(self.game)
 
 class NoWinState(GameState):
     def __init__(self, game: Game):
@@ -219,7 +212,7 @@ class NoWinState(GameState):
         if self.game.player.money <= 0:
             return StateGameOver(self.game)
         self.game.bet = min(self.previous_bet, self.game.player.money)
-        return StateDealing(self.game)
+        return StatePlaceBet(self.game)
 
 class StateGameOver(GameState):
     def __init__(self, game: Game):
@@ -233,7 +226,7 @@ class StateGameOver(GameState):
                 return StateExited(game)
             case _:
                 game.start_new_game()
-                return StateDealing(game)
+                return StatePlaceBet(game)
 
 class StateExited(GameState):
     def __init__(self, game: Game):
@@ -246,9 +239,12 @@ class StateDealing(GameState):
         super().__init__()
         self.game = game
         game.shuffle_deck()
-        game.player.subtract_bet(game.bet)
         game.deal_hand()
-        self.message = instructions
+        self.message = "\n".join([
+            "(t) to throw your hand",
+            "(k) to keep your hand",
+            "(124) to keep cards 1, 2 and 4"
+        ])
  
     def on_event(self, event: GameEvent):
         super().on_event(event) # TODO decorator
@@ -266,16 +262,6 @@ class StateDealing(GameState):
             case KeepHandEvent():
                 log.info("Player chose to keep the hand.")
                 return self.check_win()
-            case IncreaseBetEvent():
-                log.info(f"Player wants to increase the bet from {game.bet} to {game.bet + 1}.")
-                if game.can_afford_bet_increase_of(bet_increase=1) and game.bet + 1 <= Config.MAX_BET:
-                    game.increase_bet(1)
-                return self
-            case DecreaseBetEvent():
-                log.info("Player chose to decrease the bet.")
-                if game.bet > 1:
-                    game.decrease_bet(1)
-                return self
             case SelectCardsEvent():
                 indices = event.indices
                 log.info(f"Player chose to select cards: {indices}")
@@ -294,6 +280,42 @@ class StateDealing(GameState):
         else:
             return StateDoubleCheck(game, win_name, money_won)
 
+class StatePlaceBet(GameState):
+    def __init__(self, game: Game):
+        self.game = game
+        game.shuffle_deck()
+        game.deal_hand()
+        game.player.subtract_bet(game.bet)
+        self.game.obfuscate_hand = True
+        self.message = (
+            f"Place your bet (1-{Config.MAX_BET})\n"
+            "(+) to increase\n"
+            "(-) to decrease\n"
+            "(d) to deal cards\n"
+            "(q) to quit"
+        )
+
+    def on_event(self, event: GameEvent):
+        super().on_event(event)  # TODO decorator
+        game = self.game
+
+        if game.player.money <= 0 and game.bet == 0:
+            return StateGameOver(game)
+
+        match event:
+            case IncreaseBetEvent():
+                if game.can_afford_bet_increase_of(bet_increase=1) and game.bet + 1 <= Config.MAX_BET:
+                    game.increase_bet(1)
+                return self
+            case DecreaseBetEvent():
+                if game.bet > 1:
+                    game.decrease_bet(1)
+                return self
+            case ConfirmBetEvent():
+                self.game.obfuscate_hand = False
+                return StateDealing(game)
+            case _:
+                return self
 
 class PokerApp(App):
     CSS = css()
@@ -302,11 +324,9 @@ class PokerApp(App):
     def __init__(self, version: str):
         super().__init__()
         self.version = version
-        # TODO separate how much money the has vs how much they enter the game with
-        # not interesting for now, but could be useful for future features
         self.game = Game(Player("Player 1", 0))
         self.game.start_new_game()
-        self.state = StateDealing(self.game)
+        self.state = StatePlaceBet(self.game)
         self.hand_container: Container | None = None
     
     def compose(self) -> ComposeResult:

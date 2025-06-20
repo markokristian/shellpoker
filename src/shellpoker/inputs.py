@@ -15,6 +15,7 @@ class GameEventType(Enum):
     CANCEL = auto()
     BET_LOW = auto()
     BET_HIGH = auto()
+    CONFIRM_BET = auto()
 
 class GameEvent(ABC):
     pass
@@ -38,6 +39,10 @@ class IncreaseBetEvent(GameEvent):
 class DecreaseBetEvent(GameEvent):
     def __init__(self):
         self.type = GameEventType.DECREASE_BET
+
+class ConfirmBetEvent(GameEvent):
+    def __init__(self):
+        self.type = GameEventType.CONFIRM_BET
 
 class SelectCardsEvent(GameEvent):
     def __init__(self, indices: list[int]):
@@ -88,5 +93,7 @@ def parse_input(user_input: str) -> GameEvent:
             return BetLowEvent()
         case 'h' | 'high':
             return BetHighEvent()
+        case 'd' | 'deal' | 'confirm':
+            return ConfirmBetEvent()
         case _:
             return InvalidEvent()
