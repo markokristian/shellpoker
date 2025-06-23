@@ -32,9 +32,9 @@ def css():
         grid-rows: 1fr auto;
     }
 
-    #prizes {
+    #win_list {
         margin-left: 2;
-        border: solid $accent;
+        color: #FFD700;
     }
 
     #status {
@@ -84,7 +84,7 @@ def css():
     }
 
     #message {
-        color: #ad3939;
+        color: $text;
         margin-bottom: 1;
         height: 5;
         padding: 0 2;

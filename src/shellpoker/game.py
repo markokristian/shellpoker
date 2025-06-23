@@ -26,7 +26,7 @@ from textual.widgets import Static, Input
 from textual.containers import Container
 from textual.reactive import reactive
 
-from shellpoker.wins import WinType, Wins
+from shellpoker.wins import Win, WinType, Wins, render_win_list
 
 log = create_logger()
 
@@ -67,8 +67,8 @@ class Game:
                 f"| Bet: {self.bet} $ "
                 f"| Wins: {amount_won} $")
     
-    def render_prizes(self):
-        pass
+    def render_win_list(self):
+        return render_win_list(self.bet)
 
     def deal_hand(self):
         self.player.clear_hand()
@@ -112,7 +112,7 @@ class Game:
         self.player.money += amount_won
         self.last_win = (None, 0)  # reset last win after collecting
 
-    def can_afford_bet_increase_of(self, bet_increase: int) -> bool:
+    def can_afford_bet(self, bet_increase: int) -> bool:
         return self.player.money >= bet_increase
 
     def increase_bet(self, amount: int):
@@ -155,14 +155,14 @@ class StateDoubleMiniGame(GameState):
         match event:
             case BetLowEvent():
                 if card_dealt.rank.value < 8:
-                    game.last_win = (WinType("Double Win", 0), prize)
+                    game.last_win = (Win("Double Win", 0), prize)
                     return StateDoubleCheck(game, "Correct Low Guess", prize)
                 else:
                     game.last_win = (None, 0)
                     return LostDoubleMiniGame(game)
             case BetHighEvent():
                 if card_dealt.rank.value >= 8:
-                    game.last_win = (WinType("Double Win", 0), prize)
+                    game.last_win = (Win("Double Win", 0), prize)
                     return StateDoubleCheck(game, "Correct High Guess", prize)
                 else:
                     return LostDoubleMiniGame(game)
@@ -291,8 +291,8 @@ class StatePlaceBet(GameState):
         game.player.subtract_bet(game.bet)
         self.game.obfuscate_hand = True
         self.message = (
-            f"Place your bet (1-{Config.MAX_BET})\n"
-            "(+) to increase\n"
+            "Place your bet\n\n"
+            f"(+) to increase (max bet: {Config.MAX_BET})\n"
             "(-) to decrease\n"
             "(d) to deal cards\n"
             "(q) to quit"
@@ -307,7 +307,7 @@ class StatePlaceBet(GameState):
 
         match event:
             case IncreaseBetEvent():
-                if game.can_afford_bet_increase_of(bet_increase=1) and game.bet + 1 <= Config.MAX_BET:
+                if game.can_afford_bet(bet_increase=1) and game.bet + 1 <= Config.MAX_BET:
                     game.increase_bet(1)
                 return self
             case DecreaseBetEvent():
@@ -333,7 +333,8 @@ class PokerApp(App):
         self.hand = Container(id="hand")
         self.status = Static(self.game.render_status(), id="status")
         self.message = Static(self.state.message, id="message")
-    
+        self.win_list = Static(self.game.render_win_list(), id="win_list")
+
     def compose(self) -> ComposeResult:
         yield Container(
             Container(
@@ -348,7 +349,7 @@ class PokerApp(App):
                     self.message,
                     id="game",
                 ),
-                Static("HELLO", id="prizes"),
+                self.win_list,
                 id="main",
             ),
             Input(placeholder="Enter to submit", id="action_input", max_length=5),
@@ -363,6 +364,7 @@ class PokerApp(App):
         self.hand.remove_children()
         self.hand.mount(*self.game.render_hand())
         self.message.update(self.state.message)
+        self.win_list.update(self.game.render_win_list())
 
     def on_input_submitted(self, event: Input.Submitted) -> None:
         event = parse_input(event.value)

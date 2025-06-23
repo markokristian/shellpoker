@@ -73,6 +73,16 @@ WIN_TYPES: dict[str, WinType] = {
     "One Pair": OnePair(),
 }
 
+def render_win_list(bet: int):
+    return "\n".join(
+        f"{name:<20} {factor * bet:<3} $"
+        for name, factor in sorted(
+            ((win_name, win.factor) for win_name, win in WIN_TYPES.items()),
+            key=lambda x: x[1],
+            reverse=True
+        )
+    )
+
 class Wins:
     def __init__(self, hand: list['Card']):
         self.hand = hand
