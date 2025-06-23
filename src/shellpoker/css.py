@@ -42,7 +42,7 @@ def css():
     }
     .card {
         layout: vertical;
-        width: 10;
+        width: 8;
         height: 5;
         margin: 0 1;
     }
