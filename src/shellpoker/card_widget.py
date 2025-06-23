@@ -26,4 +26,3 @@ class ObfuscatedCardWidget(Container):
         yield Static(" ░░░░░ ", classes="card-line obfuscated mid")
         yield Static(" ░░░░░ ", classes="card-line obfuscated mid")
         yield Static("       ", classes="card-line obfuscated")
-        
