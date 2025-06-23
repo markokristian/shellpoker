@@ -1,90 +1,39 @@
+from dataclasses import dataclass
 
-from abc import ABC
+class GameEvent: pass
 
-from enum import Enum, auto
+class QuitEvent(GameEvent): pass
+class ThrowHandEvent(GameEvent): pass
+class KeepHandEvent(GameEvent): pass
+class IncreaseBetEvent(GameEvent): pass
+class DecreaseBetEvent(GameEvent): pass
+class ConfirmBetEvent(GameEvent): pass
+class InvalidEvent(GameEvent): pass
+class ConfirmEvent(GameEvent): pass
+class CancelEvent(GameEvent): pass
+class BetLowEvent(GameEvent): pass
+class BetHighEvent(GameEvent): pass
 
-class GameEventType(Enum):
-    QUIT = auto()
-    THROW_HAND = auto()
-    KEEP_HAND = auto()
-    INCREASE_BET = auto()
-    DECREASE_BET = auto()
-    SELECT_CARDS = auto()
-    INVALID = auto()
-    CONFIRM = auto()
-    CANCEL = auto()
-    BET_LOW = auto()
-    BET_HIGH = auto()
-    CONFIRM_BET = auto()
-
-class GameEvent(ABC):
-    pass
-
-class QuitEvent(GameEvent):
-    def __init__(self):
-        self.type = GameEventType.QUIT
-
-class ThrowHandEvent(GameEvent):
-    def __init__(self):
-        self.type = GameEventType.THROW_HAND
-
-class KeepHandEvent(GameEvent):
-    def __init__(self):
-        self.type = GameEventType.KEEP_HAND 
-
-class IncreaseBetEvent(GameEvent):
-    def __init__(self):
-        self.type = GameEventType.INCREASE_BET
-    
-class DecreaseBetEvent(GameEvent):
-    def __init__(self):
-        self.type = GameEventType.DECREASE_BET
-
-class ConfirmBetEvent(GameEvent):
-    def __init__(self):
-        self.type = GameEventType.CONFIRM_BET
-
+@dataclass
 class SelectCardsEvent(GameEvent):
-    def __init__(self, indices: list[int]):
-        self.type = GameEventType.SELECT_CARDS
-        self.indices = indices
-
-class InvalidEvent(GameEvent):
-    def __init__(self):
-        self.type = GameEventType.INVALID
-
-class ConfirmEvent(GameEvent):
-    def __init__(self):
-        self.type = GameEventType.CONFIRM
-
-class CancelEvent(GameEvent):
-    def __init__(self):
-        self.type = GameEventType.CANCEL
-
-class BetLowEvent(GameEvent):
-    def __init__(self):
-        self.type = GameEventType.BET_LOW
-
-class BetHighEvent(GameEvent):
-    def __init__(self):
-        self.type = GameEventType.BET_HIGH
+    indices: list[int]
 
 def parse_input(user_input: str) -> GameEvent:
     s = user_input.strip().replace(" ", "").lower()
     match s:
-        case 'q' | 'quit' | 'exit' | 'Q':
+        case 'q' | 'quit' | 'exit':
             return QuitEvent()
-        case 't' | 'throw' | 'T':
+        case 't' | 'throw':
             return ThrowHandEvent()
-        case 'k' | 'keep' | 'K':
+        case 'k' | 'keep':
             return KeepHandEvent()
         case '+' | 'increase' | 'add':
             return IncreaseBetEvent()
         case '-' | 'decrease' | 'subtract':
             return DecreaseBetEvent()
         case _ if all(c.isdigit() and c in "12345" for c in s) and s:
-            indices = sorted([int(c) for c in s])
-            return SelectCardsEvent(list(set(indices)))
+            indices = sorted(set(int(c) for c in s))
+            return SelectCardsEvent(indices)
         case 'n' | 'no':
             return CancelEvent()
         case 'y' | 'yes':
