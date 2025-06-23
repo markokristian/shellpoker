@@ -19,13 +19,22 @@ def css():
     #version {
         text-style: bold;
     }
-
     #title {
         color: $text;
     }
-
     #version {
         color: $text-muted;
+    }
+    
+    #main {
+        layout: grid;
+        grid-size: 2 1;
+        grid-rows: 1fr auto;
+    }
+
+    #prizes {
+        margin-left: 2;
+        border: solid $accent;
     }
 
     #status {

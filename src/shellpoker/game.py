@@ -26,7 +26,7 @@ from textual.widgets import Static, Input
 from textual.containers import Container
 from textual.reactive import reactive
 
-from shellpoker.wins import Win, Wins
+from shellpoker.wins import WinType, Wins
 
 log = create_logger()
 
@@ -45,7 +45,7 @@ class Game:
         self.bet = 1
         self.player.money = Config.INITIAL_MONEY
         # track last win and the amount won given the bet at that point
-        self.last_win: tuple[Win, int] = (None, 0)
+        self.last_win: tuple[WinType, int] = (None, 0)
 
     def shuffle_deck(self):
         self.deck = Deck()
@@ -66,6 +66,9 @@ class Game:
         return (f"Money: {self.player.money} $"
                 f"| Bet: {self.bet} $ "
                 f"| Wins: {amount_won} $")
+    
+    def render_prizes(self):
+        pass
 
     def deal_hand(self):
         self.player.clear_hand()
@@ -152,14 +155,14 @@ class StateDoubleMiniGame(GameState):
         match event:
             case BetLowEvent():
                 if card_dealt.rank.value < 8:
-                    game.last_win = (Win("Double Win", 0), prize)
+                    game.last_win = (WinType("Double Win", 0), prize)
                     return StateDoubleCheck(game, "Correct Low Guess", prize)
                 else:
                     game.last_win = (None, 0)
                     return LostDoubleMiniGame(game)
             case BetHighEvent():
                 if card_dealt.rank.value >= 8:
-                    game.last_win = (Win("Double Win", 0), prize)
+                    game.last_win = (WinType("Double Win", 0), prize)
                     return StateDoubleCheck(game, "Correct High Guess", prize)
                 else:
                     return LostDoubleMiniGame(game)
@@ -327,19 +330,27 @@ class PokerApp(App):
         self.game = Game(Player("Player 1", 0))
         self.game.start_new_game()
         self.state = StatePlaceBet(self.game)
-        self.hand_container: Container | None = None
+        self.hand = Container(id="hand")
+        self.status = Static(self.game.render_status(), id="status")
+        self.message = Static(self.state.message, id="message")
     
     def compose(self) -> ComposeResult:
-        self.hand_container = Container(id="hand")
         yield Container(
             Container(
                 Static("SHELL POKER", id="title"),
                 Static(f"v{self.version}", id="version"),
-                id="header"
+                id="header",
             ),
-            Static(self.game.render_status(), id="status"),
-            self.hand_container,
-            Static(self.state.message, id="message"),
+            Container(
+                Container(
+                    self.status,
+                    self.hand,
+                    self.message,
+                    id="game",
+                ),
+                Static("HELLO", id="prizes"),
+                id="main",
+            ),
             Input(placeholder="Enter to submit", id="action_input", max_length=5),
             id="container",
         )
@@ -348,12 +359,10 @@ class PokerApp(App):
         self.update_ui()
 
     def update_ui(self):
-        status = self.game.render_status()
-        message = self.state.message
-        self.query_one("#status", Static).update(status)
-        self.hand_container.remove_children()
-        self.hand_container.mount(*self.game.render_hand())
-        self.query_one("#message", Static).update(message)
+        self.status.update(self.game.render_status())
+        self.hand.remove_children()
+        self.hand.mount(*self.game.render_hand())
+        self.message.update(self.state.message)
 
     def on_input_submitted(self, event: Input.Submitted) -> None:
         event = parse_input(event.value)
