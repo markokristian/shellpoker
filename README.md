@@ -1,16 +1,31 @@
-# ShellPoker
+# shellpoker
 
-ShellPoker is a command-line poker game written in python.
+`shellpoker` is a command-line poker game written in python.
 
-## Develop
+## develop
 
-Use provided devcontainer.
+### devcontainer
 
-## Install and run
+    git clone git+https://github.com/markokristian/shellpoker.git
+    cd shellpoker
+    code .
+    open in devcontainer
 
-    $ pip install [url] --user
+Or use other devcontainer compliant IDE.
+
+### just uv
+
+    uv run shellpoker
+
+### makefile
+
+    make
+
+## install and run
+
+    $ pip install git+https://github.com/markokristian/shellpoker.git --user
     $ shellpoker
 
-## License
+## license
 
 This project is licensed under the MIT License.
