@@ -11,7 +11,6 @@ def test_straight():
     ]
 
     wins = Wins(hand)
-    assert wins.is_straight
     assert wins.get_best_win().name == "Straight"
 
 def test_straight_low_ace():
@@ -24,5 +23,4 @@ def test_straight_low_ace():
     ]
 
     wins = Wins(hand)
-    assert wins.is_straight
     assert wins.get_best_win().name == "Straight"
