@@ -74,6 +74,7 @@ WIN_TYPES: dict[str, WinType] = {
 }
 
 def render_win_list(bet: int):
+    bet = max(bet, 1)
     return "\n".join(
         f"{name:<20} {factor * bet:<3} $"
         for name, factor in sorted(
