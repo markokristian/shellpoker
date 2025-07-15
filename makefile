@@ -6,3 +6,6 @@ test:
  
 lint:
 	uv run ruff check --fix
+
+simulate:
+	uv run python src/shellpoker/simulate.py

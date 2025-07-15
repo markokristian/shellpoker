@@ -16,7 +16,7 @@ class WinType:
 
 class RoyalFlush(WinType):
     name = "Royal Flush"
-    factor = 20
+    factor = 50
     def check(self, wins: "Wins") -> bool:
         needed = {10, 11, 12, 13, 14}
         present = set(wins.ranks_no_joker)
@@ -29,13 +29,13 @@ class RoyalFlush(WinType):
 
 class StraightFlush(WinType):
     name = "Straight Flush"
-    factor = 15
+    factor = 30
     def check(self, wins: "Wins") -> bool:
         return wins.is_straight_flush_with_joker
 
 class FourOfAKind(WinType):
     name = "Four of a Kind"
-    factor = 10
+    factor = 15
     def check(self, wins: "Wins") -> bool:
         for rank, count in wins.rank_counts_no_joker.items():
             if count + wins.joker_count >= 4:
@@ -44,7 +44,7 @@ class FourOfAKind(WinType):
 
 class FullHouse(WinType):
     name = "Full House"
-    factor = 8
+    factor = 9
     def check(self, wins: "Wins") -> bool:
         counts = list(wins.rank_counts_no_joker.values())
         counts.sort(reverse=True)
@@ -61,19 +61,19 @@ class FullHouse(WinType):
 
 class Flush(WinType):
     name = "Flush"
-    factor = 6
+    factor = 4
     def check(self, wins: "Wins") -> bool:
         return len(wins.suits_no_joker) == 1 and len(wins.ranks_no_joker) + wins.joker_count == 5
 
 class Straight(WinType):
     name = "Straight"
-    factor = 5
+    factor = 3
     def check(self, wins: "Wins") -> bool:
         return wins.is_straight_with_joker
 
 class ThreeOfAKind(WinType):
     name = "Three of a Kind"
-    factor = 4
+    factor = 2
     def check(self, wins: "Wins") -> bool:
         for rank, count in wins.rank_counts_no_joker.items():
             if count + wins.joker_count >= 3:
@@ -95,14 +95,15 @@ class TwoPairs(WinType):
             return True
         return False
 
-class OnePair(WinType):
-    name = "One Pair"
+class HighPair(WinType):
+    name = "High Pair"
     factor = 1
     def check(self, wins: "Wins") -> bool:
+        high_ranks = {11, 12, 13, 14}
         for rank, count in wins.rank_counts_no_joker.items():
-            if count + wins.joker_count >= 2:
+            if rank in high_ranks and count + wins.joker_count >= 2:
                 return True
-        return wins.joker_count >= 2
+        return False
 
 WIN_TYPES = [
     RoyalFlush(),
@@ -113,7 +114,7 @@ WIN_TYPES = [
     Straight(),
     ThreeOfAKind(),
     TwoPairs(),
-    OnePair(),
+    HighPair(),
 ]
 
 def render_win_list(bet: int, jokers: int):
