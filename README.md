@@ -28,6 +28,10 @@ Or use other devcontainer compliant IDE.
     $ pip install git+https://github.com/markokristian/shellpoker.git --user
     $ shellpoker
 
+## run with docker
+
+    docker run -it --rm python:3.12 bash -c "pip install git+https://github.com/markokristian/shellpoker.git && shellpoker"
+
 ## license
 
 This project is licensed under the MIT License.
