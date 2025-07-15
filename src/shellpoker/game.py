@@ -38,6 +38,7 @@ class Game:
     def __init__(self, player: Player):
         self.player = player
         self.obfuscate_hand = False  # whether to show the hand or not
+        self.bet = 1
 
     def start_new_game(self):
         log.info("Starting a new game.")
@@ -49,6 +50,10 @@ class Game:
 
     def shuffle_deck(self):
         self.deck = Deck()
+        if self.bet >= 3:
+            self.deck.add_joker()
+        if self.bet >= 5:
+            self.deck.add_joker()
         self.deck.shuffle()
 
     def stop(self):
@@ -68,7 +73,8 @@ class Game:
                 f"| Wins: {amount_won} $")
     
     def render_win_list(self):
-        return render_win_list(self.bet)
+        jokers_active = 2 if self.bet >= 5 else 1 if self.bet >= 3 else 0
+        return render_win_list(self.bet, jokers_active)
 
     def deal_hand(self):
         self.player.clear_hand()
@@ -137,11 +143,11 @@ class GameState(ABC):
                 return self
 
 class StateDoubleMiniGame(GameState):
-    def __init__(self, game: Game, money_won: int):
+    def __init__(self, game: Game, money_won: int, card_dealt: Card):
         self.game = game
         self.money_won = money_won
-        self.message = "Low or High?\n1-7 are low, 8-K are high\n(l/h)"
-        self.card_dealt: Card = game.deal_one_card()
+        self.message = "Low or High?\n2-7 are low, 9-A are high\n(l/h)"
+        self.card_dealt: Card = card_dealt
         game.obfuscate_hand = True  # Hide the hand in this state
 
     def on_event(self, event):
@@ -154,14 +160,14 @@ class StateDoubleMiniGame(GameState):
 
         match event:
             case BetLowEvent():
-                if card_dealt.rank.value < 8:
+                if card_dealt.rank.value < 8 or card_dealt.is_joker():
                     game.last_win = (Win("Double Win", 0), prize)
                     return StateDoubleCheck(game, "Correct Low Guess", prize)
                 else:
                     game.last_win = (None, 0)
                     return LostDoubleMiniGame(game)
             case BetHighEvent():
-                if card_dealt.rank.value >= 8:
+                if card_dealt.rank.value > 8 or card_dealt.is_joker():
                     game.last_win = (Win("Double Win", 0), prize)
                     return StateDoubleCheck(game, "Correct High Guess", prize)
                 else:
@@ -180,7 +186,9 @@ class StateDoubleCheck(GameState):
         game = self.game
         match event:
             case ConfirmEvent():
-                return StateDoubleMiniGame(game, self.money_won)
+                return StateDoubleMiniGame(
+                    game, self.money_won, game.deal_one_card()
+                )
             case CancelEvent():
                 game.collect_wins()
                 return StatePlaceBet(game)
@@ -193,7 +201,7 @@ class LostDoubleMiniGame(GameState):
         game.last_win = (None, 0)
         self.previous_bet = game.bet
         self.game.bet = 0 # lost the bet
-        self.message = "You guessed wrong :( Press Enter to continue..."
+        self.message = "Sorry, no win :( Press Enter to continue..."
         self.game.obfuscate_hand = False  # Show the hand in this state
 
     def on_event(self, event: GameEvent):

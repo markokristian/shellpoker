@@ -1,17 +1,34 @@
+from dataclasses import dataclass
+
+JOKER_SYMBOL = "Jkr"
+
+@dataclass(frozen=True)
 class Rank:
-    def __init__(self, name: str, value: int) -> None:
-        self.name = name
-        self.value = value
+    name: str
+    value: int
 
+@dataclass(frozen=True)
 class Suit:
-    def __init__(self, name: str, emoji: str) -> None:
-        self.name = name
-        self.emoji = emoji
+    name: str
+    emoji: str
 
+class Suits:
+    HEARTS = Suit("Hearts", "♥")
+    DIAMONDS = Suit("Diamonds", "♦")
+    CLUBS = Suit("Clubs", "♣")
+    SPADES = Suit("Spades", "♠")
+
+@dataclass(frozen=True)
 class Card:
-    def __init__(self, rank: Rank, suit: Suit) -> None:
-        self.rank = rank
-        self.suit = suit
+    rank: Rank
+    suit: Suit
 
     def __repr__(self) -> str:
         return f"{self.rank.name}{self.suit.emoji}"
+    
+    def is_joker(self) -> bool:
+        return self.suit.emoji == JOKER_SYMBOL
+    
+    @staticmethod
+    def create_joker() -> 'Card':
+        return Card(Rank("", 0), Suit("", JOKER_SYMBOL))

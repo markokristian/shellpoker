@@ -74,6 +74,9 @@ def css():
     .card-line.spades {
         color: black;
     }
+    .card-line.joker {
+        color: blue;
+    }
     .card-line.obfuscated {
         color: #ad3939;
         background: red;
